@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CropMyPic — Free Online Image Resizer & Compressor</title>
+  <meta name="description" content="Crop, resize & compress images for Amazon, Etsy, Shopify, Instagram, TikTok, YouTube. Free online tool with presets." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23000' d='M20 12h4v36h24v4H20zM12 20h36v24h4V20z'/%3E%3C/svg%3E">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Placeholder for AdSense: paste your script once approved -->
+  <!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=YOUR-CLIENT-ID" crossorigin="anonymous"></script> -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+</head>
+<body class="bg-white text-gray-900">
+  <header class="sticky top-0 z-10 bg-white/70 backdrop-blur border-b border-gray-100">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <a href="/" class="text-xl font-bold">Crop<span class="text-indigo-600">MyPic</span></a>
+      <nav class="hidden sm:flex gap-6 text-sm">
+        <a href="#sellers" class="hover:text-indigo-600">For Sellers</a>
+        <a href="#creators" class="hover:text-indigo-600">For Creators</a>
+        <a href="#pricing" class="hover:text-indigo-600">Pricing</a>
+        <a href="#faq" class="hover:text-indigo-600">FAQ</a>
+        <a href="/blog/index.html" class="hover:text-indigo-600">Blog</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-10">
+    <section class="text-center mb-10">
+      <h1 class="text-3xl sm:text-5xl font-extrabold leading-tight">
+        Free Online Image <span class="text-indigo-600">Cropper</span>,
+        <span class="text-indigo-600">Resizer</span> & <span class="text-indigo-600">Compressor</span>
+      </h1>
+      <p class="mt-3 text-gray-600 max-w-2xl mx-auto">
+        Perfect sizes for <strong>Amazon, Etsy, Shopify</strong> and
+        <strong>Instagram, TikTok, YouTube</strong>. No signup. Works in your browser.
+      </p>
+    </section>
+
+    <!-- App grid -->
+    <section class="grid md:grid-cols-3 gap-6 items-start">
+      <!-- Left: uploader + controls -->
+      <div class="md:col-span-2">
+        <!-- Dropzone -->
+        <div id="dropzone" class="border-2 border-dashed border-gray-200 rounded-2xl p-6 text-center hover:border-indigo-300 transition cursor-pointer">
+          <input id="fileInput" type="file" accept="image/*" multiple class="hidden" />
+          <div class="py-8">
+            <p class="text-lg font-semibold">Drag & drop images here</p>
+            <p class="text-sm text-gray-500">or click to choose files (max 5 images, ≤ 10MB each on free tier)</p>
+            <button id="browseBtn" class="mt-4 px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">Choose Files</button>
+          </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="mt-4 grid sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Preset</label>
+            <select id="preset" class="w-full border rounded-xl p-2">
+              <optgroup label="For Sellers (Amazon/Etsy/Shopify)"></optgroup>
+              <option value="2000x2000">Amazon Product — 2000×2000</option>
+              <option value="1600x1600">Etsy Square — 1600×1600</option>
+              <option value="1200x400">Shopify Banner — 1200×400</option>
+              <optgroup label="For Creators (Instagram/TikTok/YT)"></optgroup>
+              <option value="1080x1080">Instagram Post — 1080×1080</option>
+              <option value="1080x1920">Instagram/TikTok Story — 1080×1920</option>
+              <option value="1280x720">YouTube Thumbnail — 1280×720</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2" id="customDims" style="display:none;">
+            <div>
+              <label class="block text-sm font-medium mb-1">Width (px)</label>
+              <input id="width" type="number" class="w-full border rounded-xl p-2" placeholder="e.g. 800" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Height (px)</label>
+              <input id="height" type="number" class="w-full border rounded-xl p-2" placeholder="e.g. 800" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-1">Quality</label>
+            <input id="quality" type="range" min="30" max="100" value="85" class="w-full" />
+            <div class="text-xs text-gray-500"><span id="qualityVal">85</span>% (higher = larger file)</div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium mb-1">Format</label>
+            <select id="format" class="w-full border rounded-xl p-2">
+              <option value="image/jpeg">JPEG</option>
+              <option value="image/webp">WebP</option>
+              <option value="image/png">PNG</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="mt-4 flex flex-wrap gap-3">
+          <button id="processBtn" class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50" disabled>
+            Resize & Compress
+          </button>
+          <button id="downloadAllBtn" class="px-4 py-2 rounded-xl bg-gray-900 text-white hover:bg-black disabled:opacity-50" disabled>
+            Download All (ZIP)
+          </button>
+          <span id="limitNote" class="text-xs text-gray-500">Free tier: up to 5 images/session, ≤ 10MB each.</span>
+        </div>
+
+        <!-- Gallery -->
+        <div id="gallery" class="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </div>
+
+      <!-- Right: info + ad + pricing -->
+      <aside class="space-y-6">
+        <div class="border rounded-2xl p-4">
+          <h3 id="sellers" class="font-semibold">For Sellers</h3>
+          <p class="text-sm text-gray-600">One-click presets for Amazon, Etsy, Shopify. Clean, square images that load fast and boost conversions.</p>
+        </div>
+        <div class="border rounded-2xl p-4">
+          <h3 id="creators" class="font-semibold">For Creators</h3>
+          <p class="text-sm text-gray-600">Perfect sizes for Instagram, TikTok, YouTube. Keep quality, cut the size, post faster.</p>
+        </div>
+        <div class="border rounded-2xl p-4">
+          <h3 class="font-semibold">Ad</h3>
+          <!-- Replace with your AdSense unit when approved -->
+          <div class="bg-gray-50 h-40 rounded-xl border flex items-center justify-center text-xs text-gray-400">Ad slot</div>
+        </div>
+        <div id="pricing" class="border rounded-2xl p-4">
+          <h3 class="font-semibold">Pricing</h3>
+          <ul class="text-sm text-gray-700 list-disc ml-5 mt-2">
+            <li><strong>Free</strong>: 5 images, ≤10MB each, standard formats, ads.</li>
+            <li><strong>Pro</strong> ($4/mo): Unlimited, bigger files, batch ZIP, WebP/PNG/HEIC*, no ads.</li>
+          </ul>
+          <button id="proBtn" class="mt-3 px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">Go Pro</button>
+          <p class="mt-2 text-[11px] text-gray-500">* HEIC support planned.</p>
+        </div>
+      </aside>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq" class="mt-16">
+      <h2 class="text-2xl font-bold mb-4">FAQ</h2>
+      <details class="border rounded-xl p-4 mb-3">
+        <summary class="font-medium cursor-pointer">Are my images uploaded to a server?</summary>
+        <p class="text-sm text-gray-600 mt-2">Processing happens <strong>in your browser</strong> using HTML Canvas and Web APIs. We do not store your images.</p>
+      </details>
+      <details class="border rounded-xl p-4 mb-3">
+        <summary class="font-medium cursor-pointer">How do I remove ads?</summary>
+        <p class="text-sm text-gray-600 mt-2">Upgrade to Pro (coming soon) to remove ads, unlock unlimited processing, and larger files.</p>
+      </details>
+    </section>
+  </main>
+
+  <footer class="mt-16 border-t">
+    <div class="max-w-6xl mx-auto px-4 py-8 text-sm text-gray-500 flex flex-wrap gap-4 items-center justify-between">
+      <p>© <span id="year"></span> CropMyPic. All rights reserved.</p>
+      <div class="flex gap-4">
+        <a href="/privacy.html" class="hover:text-indigo-600">Privacy</a>
+        <a href="/terms.html" class="hover:text-indigo-600">Terms</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Elements
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const browseBtn = document.getElementById('browseBtn');
+    const processBtn = document.getElementById('processBtn');
+    const downloadAllBtn = document.getElementById('downloadAllBtn');
+    const gallery = document.getElementById('gallery');
+    const preset = document.getElementById('preset');
+    const customDims = document.getElementById('customDims');
+    const widthEl = document.getElementById('width');
+    const heightEl = document.getElementById('height');
+    const quality = document.getElementById('quality');
+    const qualityVal = document.getElementById('qualityVal');
+    const format = document.getElementById('format');
+    const year = document.getElementById('year');
+
+    // Limits (free tier)
+    const MAX_FILES_FREE = 5;
+    const MAX_BYTES_FREE = 10 * 1024 * 1024; // 10MB
+
+    let filesQueue = [];
+    let processed = [];
+
+    year.textContent = new Date().getFullYear();
+
+    // UI events
+    quality.addEventListener('input', () => qualityVal.textContent = quality.value);
+    preset.addEventListener('change', () => { customDims.style.display = preset.value === 'custom' ? 'grid' : 'none'; });
+
+    browseBtn.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('click', () => fileInput.click());
+
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('border-indigo-400'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('border-indigo-400'));
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropzone.classList.remove('border-indigo-400');
+      enqueueFiles(e.dataTransfer.files);
+    });
+
+    fileInput.addEventListener('change', e => enqueueFiles(e.target.files));
+
+    function enqueueFiles(fileList){
+      const arr = Array.from(fileList);
+      const currentCount = filesQueue.length;
+      const allowed = Math.max(0, MAX_FILES_FREE - currentCount);
+      const toAdd = arr.slice(0, allowed);
+      const rejectedCount = arr.length - toAdd.length;
+
+      toAdd.forEach(f => {
+        if (f.size > MAX_BYTES_FREE) { alert(`${f.name} is over 10MB on the free tier.`); return; }
+        if (!f.type.startsWith('image/')) { alert(`${f.name} is not an image.`); return; }
+        filesQueue.push(f);
+      });
+
+      if (rejectedCount > 0) { alert(`Free tier allows up to ${MAX_FILES_FREE} images per session.`); }
+      refreshGallery();
+    }
+
+    function refreshGallery(){
+      gallery.innerHTML = '';
+      processed = [];
+      processBtn.disabled = filesQueue.length === 0;
+      downloadAllBtn.disabled = true;
+
+      filesQueue.forEach(file => {
+        const card = document.createElement('div');
+        card.className = 'border rounded-xl p-3';
+        const name = document.createElement('div');
+        name.className = 'text-xs text-gray-600 truncate';
+        name.textContent = file.name;
+        const img = document.createElement('img');
+        img.className = 'w-full h-40 object-contain bg-gray-50 rounded-lg mt-2';
+        const reader = new FileReader();
+        reader.onload = e => img.src = e.target.result;
+        reader.readAsDataURL(file);
+        card.appendChild(name);
+        card.appendChild(img);
+        gallery.appendChild(card);
+      });
+    }
+
+    processBtn.addEventListener('click', async () => {
+      processed = [];
+      const [w, h] = getTargetDims();
+      const q = parseInt(quality.value, 10) / 100;
+      const fmt = format.value;
+
+      for (const file of filesQueue) {
+        const out = await transformImage(file, w, h, q, fmt);
+        processed.push(out);
+      }
+
+      renderProcessed();
+      downloadAllBtn.disabled = processed.length === 0;
+    });
+
+    downloadAllBtn.addEventListener('click', async () => {
+      if (processed.length === 0) return;
+      const zip = new JSZip();
+      processed.forEach(p => {
+        const base64 = p.dataURL.split(',')[1];
+        zip.file(p.filename, base64, { base64: true });
+      });
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'cropmypic.zip';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    function getTargetDims(){
+      if (preset.value === 'custom') {
+        const w = parseInt(widthEl.value || '0', 10);
+        const h = parseInt(heightEl.value || '0', 10);
+        return [Math.max(1, w), Math.max(1, h)];
+      }
+      const [w, h] = preset.value.split('x').map(n => parseInt(n, 10));
+      return [w, h];
+    }
+
+    function renderProcessed(){
+      gallery.innerHTML = '';
+      processed.forEach(p => {
+        const card = document.createElement('div');
+        card.className = 'border rounded-xl p-3';
+        const name = document.createElement('div');
+        name.className = 'text-xs text-gray-600 truncate';
+        name.textContent = p.filename + ` — ${Math.round(p.bytes/1024)} KB`;
+        const img = document.createElement('img');
+        img.className = 'w-full h-40 object-contain bg-gray-50 rounded-lg mt-2';
+        img.src = p.dataURL;
+        const actions = document.createElement('div');
+        actions.className = 'mt-2 flex justify-between items-center';
+        const dl = document.createElement('button');
+        dl.className = 'px-3 py-1 rounded-lg bg-gray-900 text-white text-xs';
+        dl.textContent = 'Download';
+        dl.addEventListener('click', () => downloadDataURL(p.dataURL, p.filename));
+        actions.appendChild(dl);
+        card.appendChild(name);
+        card.appendChild(img);
+        card.appendChild(actions);
+        gallery.appendChild(card);
+      });
+    }
+
+    function downloadDataURL(dataURL, filename){
+      const a = document.createElement('a');
+      a.href = dataURL;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    async function transformImage(file, targetW, targetH, quality, mime){
+      const img = await fileToImage(file);
+      // Fit inside target dims (maintain aspect)
+      const { w, h } = fitContain(img.width, img.height, targetW, targetH);
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      const dataURL = canvas.toDataURL(mime, quality);
+      const bytes = approxBytesFromDataURL(dataURL, mime);
+      const ext = mime === 'image/png' ? 'png' : (mime === 'image/webp' ? 'webp' : 'jpg');
+      const base = file.name.replace(/\.[^.]+$/, '');
+      const filename = `${base}_${w}x${h}.${ext}`;
+      return { dataURL, filename, bytes };
+    }
+
+    function fitContain(srcW, srcH, maxW, maxH){
+      const scale = Math.min(maxW / srcW, maxH / srcH);
+      return { w: Math.max(1, Math.round(srcW * scale)), h: Math.max(1, Math.round(srcH * scale)) };
+    }
+
+    function fileToImage(file){
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function approxBytesFromDataURL(dataURL, mime){
+      // Strip prefix like "data:image/jpeg;base64,"
+      const prefix = `data:${mime};base64,`;
+      const base64 = dataURL.startsWith(prefix) ? dataURL.slice(prefix.length) : dataURL.split(',')[1];
+      return Math.ceil((base64.length * 3) / 4);
+    }
+
+    // Stub: Pro button
+    document.getElementById('proBtn').addEventListener('click', () => {
+      alert('Pro coming soon: unlimited, larger files, no ads.');
+    });
+  </script>
+</body>
+</html>
