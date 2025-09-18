@@ -7,10 +7,7 @@
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
-    gtag('config', 'G-3WV4JB97VY', {
-      send_page_view: true
-      // ,debug_mode: true // <-- uncomment while testing
-    });
+    gtag('config', 'G-3WV4JB97VY', { send_page_view: true /* ,debug_mode: true */ });
   </script>
 
   <!-- Plausible Analytics (optional; keep or remove as you like) -->
@@ -28,7 +25,7 @@
   <meta name="description" content="Crop, resize & compress images for Amazon, Etsy, Shopify, Instagram, TikTok, YouTube. Free online tool with presets." />
   <meta name="keywords" content="image resizer, image compressor, amazon photo size, etsy thumbnail, shopify banner, instagram story size, tiktok video cover, youtube thumbnail" />
 
-  <!-- Open Graph (Facebook, LinkedIn) -->
+  <!-- Open Graph -->
   <meta property="og:title" content="CropMyPic — Free Online Image Resizer & Compressor" />
   <meta property="og:description" content="Resize & compress images instantly with presets for Amazon, Etsy, Shopify, Instagram, TikTok, and YouTube." />
   <meta property="og:url" content="https://cropmypic.vercel.app/" />
@@ -47,6 +44,10 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23000' d='M20 12h4v36h24v4H20zM12 20h36v24h4V20z'/%3E%3C/svg%3E">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+  <!-- Cropper.js -->
+  <link  href="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.css" rel="stylesheet">
+  <script src="https://unpkg.com/cropperjs@1.6.2/dist/cropper.min.js"></script>
 </head>
 <body class="bg-white text-gray-900">
   <header class="sticky top-0 z-10 bg-white/70 backdrop-blur border-b border-gray-100">
@@ -133,14 +134,15 @@
         </div>
 
         <!-- Actions -->
-        <div class="mt-4 flex flex-wrap gap-3">
+        <div class="mt-4 flex flex-wrap gap-3 items-center">
           <button id="processBtn" class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50" disabled>
             Resize & Compress
           </button>
           <button id="downloadAllBtn" class="px-4 py-2 rounded-xl bg-gray-900 text-white hover:bg-black disabled:opacity-50" disabled>
             Download All (ZIP)
           </button>
-          <span id="limitNote" class="text-xs text-gray-500">Free tier: up to 5 images/session, ≤ 10MB each.</span>
+          <span class="text-xs text-gray-500">Tip: click “Edit (Crop)” on any image to crop before processing.</span>
+          <span id="limitNote" class="text-xs text-gray-500 ml-auto">Free tier: up to 5 images/session, ≤ 10MB each.</span>
         </div>
 
         <!-- Gallery -->
@@ -158,19 +160,16 @@
           <p class="text-sm text-gray-600">Perfect sizes for Instagram, TikTok, YouTube. Keep quality, cut the size, post faster.</p>
         </div>
 
-        <!-- AdSense unit (replaces the old gray box) -->
+        <!-- AdSense unit -->
         <div class="border rounded-2xl p-4">
           <h3 class="font-semibold">Ad</h3>
-          <!-- Google AdSense responsive unit -->
           <ins class="adsbygoogle"
                style="display:block"
                data-ad-client="ca-pub-8562223178556235"
-               data-ad-slot="YOUR_SLOT_ID"  <!-- replace with your real slot ID from AdSense -->
+               data-ad-slot="4386228600"
                data-ad-format="auto"
                data-full-width-responsive="true"></ins>
-          <script>
-            (adsbygoogle = window.adsbygoogle || []).push({});
-          </script>
+          <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
         </div>
 
         <div id="pricing" class="border rounded-2xl p-4">
@@ -209,6 +208,41 @@
     </div>
   </footer>
 
+  <!-- Crop Modal -->
+  <div id="cropModal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/60"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="w-full max-w-3xl bg-white rounded-2xl shadow-xl overflow-hidden">
+        <div class="px-4 py-3 border-b flex items-center justify-between">
+          <h3 class="font-semibold">Crop image</h3>
+          <button id="cropClose" class="text-gray-500 hover:text-gray-800 text-2xl leading-none">&times;</button>
+        </div>
+        <div class="p-4">
+          <div class="mb-3 flex flex-wrap gap-3 items-center">
+            <label class="text-sm font-medium">Aspect ratio:</label>
+            <select id="cropAspect" class="border rounded-lg p-2 text-sm">
+              <option value="free">Free</option>
+              <option value="1">1:1 (Square)</option>
+              <option value="0.8">4:5 (Portrait)</option>
+              <option value="1.7777777778">16:9 (Landscape)</option>
+              <option value="0.5625">9:16 (Story)</option>
+            </select>
+            <button id="cropRotate" class="px-3 py-1.5 rounded-lg border text-sm">Rotate 90°</button>
+            <button id="cropFlipH" class="px-3 py-1.5 rounded-lg border text-sm">Flip H</button>
+            <button id="cropFlipV" class="px-3 py-1.5 rounded-lg border text-sm">Flip V</button>
+          </div>
+          <div class="w-full max-h-[60vh] overflow-hidden border rounded-xl bg-gray-50">
+            <img id="cropImage" alt="Crop preview" class="max-w-full block">
+          </div>
+        </div>
+        <div class="px-4 py-3 border-t flex justify-end gap-3">
+          <button id="cropCancel" class="px-4 py-2 rounded-xl border">Cancel</button>
+          <button id="cropApply" class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">Apply crop</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     // Elements
     const dropzone = document.getElementById('dropzone');
@@ -237,7 +271,17 @@
 
     // UI events
     quality.addEventListener('input', () => qualityVal.textContent = quality.value);
-    preset.addEventListener('change', () => { customDims.style.display = preset.value === 'custom' ? 'grid' : 'none'; });
+    preset.addEventListener('change', () => {
+      customDims.style.display = preset.value === 'custom' ? 'grid' : 'none';
+      // If cropper is open, align aspect ratio to preset
+      if (cropper) {
+        const ratio = preset.value === 'custom'
+          ? NaN
+          : (parseInt(preset.value.split('x')[0]) / parseInt(preset.value.split('x')[1]));
+        cropAspect.value = isNaN(ratio) ? 'free' : String(ratio);
+        cropper.setAspectRatio(isNaN(ratio) ? NaN : ratio);
+      }
+    });
 
     browseBtn.addEventListener('click', () => fileInput.click());
     dropzone.addEventListener('click', () => fileInput.click());
@@ -275,29 +319,39 @@
       processBtn.disabled = filesQueue.length === 0;
       downloadAllBtn.disabled = true;
 
-      filesQueue.forEach(file => {
+      filesQueue.forEach((file, idx) => {
         const card = document.createElement('div');
         card.className = 'border rounded-xl p-3';
+
+        const head = document.createElement('div');
+        head.className = 'flex items-center justify-between gap-2';
+
         const name = document.createElement('div');
         name.className = 'text-xs text-gray-600 truncate';
         name.textContent = file.name;
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'text-xs px-2 py-1 rounded-lg border hover:bg-gray-50';
+        editBtn.textContent = 'Edit (Crop)';
+        editBtn.addEventListener('click', () => openCropper(file, idx));
+
+        head.appendChild(name);
+        head.appendChild(editBtn);
+
         const img = document.createElement('img');
         img.className = 'w-full h-40 object-contain bg-gray-50 rounded-lg mt-2';
         const reader = new FileReader();
         reader.onload = e => img.src = e.target.result;
         reader.readAsDataURL(file);
-        card.appendChild(name);
+
+        card.appendChild(head);
         card.appendChild(img);
         gallery.appendChild(card);
       });
     }
 
     processBtn.addEventListener('click', async () => {
-      // GA4: track attempt to process
-      gtag('event', 'process_images', {
-        event_category: 'engagement',
-        event_label: 'resize_compress_clicked'
-      });
+      gtag('event', 'process_images', { event_category: 'engagement', event_label: 'resize_compress_clicked' });
 
       processed = [];
       const [w, h] = getTargetDims();
@@ -314,7 +368,6 @@
     });
 
     downloadAllBtn.addEventListener('click', async () => {
-      // GA4: track ZIP download
       gtag('event', 'download_zip', { event_category: 'engagement' });
 
       if (processed.length === 0) return;
@@ -342,6 +395,12 @@
       }
       const [w, h] = preset.value.split('x').map(n => parseInt(n, 10));
       return [w, h];
+    }
+
+    function extFromMime(mime){
+      if (mime === 'image/png') return 'png';
+      if (mime === 'image/webp') return 'webp';
+      return 'jpg';
     }
 
     function renderProcessed(){
@@ -386,9 +445,9 @@
       canvas.width = w; canvas.height = h;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, w, h);
-      const dataURL = canvas.toDataURL(mime, quality);
+      const dataURL = canvas.toDataURL(mime, mime === 'image/png' ? undefined : quality);
       const bytes = approxBytesFromDataURL(dataURL, mime);
-      const ext = mime === 'image/png' ? 'png' : (mime === 'image/webp' ? 'webp' : 'jpg');
+      const ext = extFromMime(mime);
       const base = file.name.replace(/\.[^.]+$/, '');
       const filename = `${base}_${w}x${h}.${ext}`;
       return { dataURL, filename, bytes };
@@ -425,6 +484,102 @@
       gtag('event', 'pro_cta_click', { event_category: 'monetization' });
       alert('Pro coming soon: unlimited, larger files, no ads.');
     });
+
+    /* ------- Cropper integration ------- */
+    let cropper = null;
+    let cropIndex = -1;
+    let scaleX = 1, scaleY = 1;
+
+    const cropModal  = document.getElementById('cropModal');
+    const cropImage  = document.getElementById('cropImage');
+    const cropClose  = document.getElementById('cropClose');
+    const cropCancel = document.getElementById('cropCancel');
+    const cropApply  = document.getElementById('cropApply');
+    const cropAspect = document.getElementById('cropAspect');
+    const cropRotate = document.getElementById('cropRotate');
+    const cropFlipH  = document.getElementById('cropFlipH');
+    const cropFlipV  = document.getElementById('cropFlipV');
+
+    function openCropper(file, index){
+      cropIndex = index;
+      scaleX = 1; scaleY = 1;
+
+      const reader = new FileReader();
+      reader.onload = e => {
+        cropImage.src = e.target.result;
+        cropModal.classList.remove('hidden');
+
+        if (cropper) { cropper.destroy(); cropper = null; }
+        cropper = new Cropper(cropImage, {
+          viewMode: 1,
+          dragMode: 'move',
+          aspectRatio: NaN,
+          autoCropArea: 0.9,
+          responsive: true,
+          background: false,
+          movable: true,
+          zoomable: true,
+          rotatable: true,
+          scalable: true
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function closeCropper(){
+      cropModal.classList.add('hidden');
+      if (cropper) { cropper.destroy(); cropper = null; }
+      cropIndex = -1;
+    }
+
+    cropClose.addEventListener('click', closeCropper);
+    cropCancel.addEventListener('click', closeCropper);
+
+    cropAspect.addEventListener('change', () => {
+      const val = cropAspect.value;
+      cropper && cropper.setAspectRatio(val === 'free' ? NaN : Number(val));
+    });
+
+    cropRotate.addEventListener('click', () => { cropper && cropper.rotate(90); });
+
+    cropFlipH.addEventListener('click', () => {
+      if (!cropper) return;
+      scaleX = -scaleX;
+      cropper.scaleX(scaleX);
+    });
+
+    cropFlipV.addEventListener('click', () => {
+      if (!cropper) return;
+      scaleY = -scaleY;
+      cropper.scaleY(scaleY);
+    });
+
+    cropApply.addEventListener('click', () => {
+      if (!cropper || cropIndex < 0) return;
+
+      // Respect selected format & quality from UI
+      const mime = format.value; // "image/jpeg" | "image/webp" | "image/png"
+      const q = parseInt(quality.value, 10) / 100;
+
+      const canvas = cropper.getCroppedCanvas({ maxWidth: 4096, maxHeight: 4096 });
+
+      const toBlobType = mime;
+      const toBlobQuality = (mime === 'image/png') ? undefined : q;
+
+      canvas.toBlob((blob) => {
+        const old = filesQueue[cropIndex];
+        const ext = extFromMime(mime);
+        const newName = old.name.replace(/\.[^.]+$/, '') + '-cropped.' + ext;
+
+        if (!blob) { alert('Could not export cropped image. Try a different format.'); return; }
+
+        const newFile = new File([blob], newName, { type: mime });
+        filesQueue[cropIndex] = newFile;
+        closeCropper();
+        refreshGallery();
+      }, toBlobType, toBlobQuality);
+    });
+    /* ----- End Cropper integration ----- */
   </script>
 </body>
 </html>
