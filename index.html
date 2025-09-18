@@ -16,11 +16,15 @@
   <!-- Plausible Analytics (optional; keep or remove as you like) -->
   <script defer data-domain="cropmypic.vercel.app" src="https://plausible.io/js/script.js"></script>
 
+  <!-- Google AdSense (global) -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8562223178556235"
+     crossorigin="anonymous"></script>
+
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>CropMyPic — Free Online Image Resizer & Compressor</title>
 
-  <!-- SEO meta (single description; removed duplicate) -->
+  <!-- SEO meta -->
   <meta name="description" content="Crop, resize & compress images for Amazon, Etsy, Shopify, Instagram, TikTok, YouTube. Free online tool with presets." />
   <meta name="keywords" content="image resizer, image compressor, amazon photo size, etsy thumbnail, shopify banner, instagram story size, tiktok video cover, youtube thumbnail" />
 
@@ -42,8 +46,6 @@
 
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23000' d='M20 12h4v36h24v4H20zM12 20h36v24h4V20z'/%3E%3C/svg%3E">
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Placeholder for AdSense: paste your script once approved -->
-  <!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=YOUR-CLIENT-ID" crossorigin="anonymous"></script> -->
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 </head>
 <body class="bg-white text-gray-900">
@@ -155,11 +157,22 @@
           <h3 id="creators" class="font-semibold">For Creators</h3>
           <p class="text-sm text-gray-600">Perfect sizes for Instagram, TikTok, YouTube. Keep quality, cut the size, post faster.</p>
         </div>
+
+        <!-- AdSense unit (replaces the old gray box) -->
         <div class="border rounded-2xl p-4">
           <h3 class="font-semibold">Ad</h3>
-          <!-- Replace with your AdSense unit when approved -->
-          <div class="bg-gray-50 h-40 rounded-xl border flex items-center justify-center text-xs text-gray-400">Ad slot</div>
+          <!-- Google AdSense responsive unit -->
+          <ins class="adsbygoogle"
+               style="display:block"
+               data-ad-client="ca-pub-8562223178556235"
+               data-ad-slot="YOUR_SLOT_ID"  <!-- replace with your real slot ID from AdSense -->
+               data-ad-format="auto"
+               data-full-width-responsive="true"></ins>
+          <script>
+            (adsbygoogle = window.adsbygoogle || []).push({});
+          </script>
         </div>
+
         <div id="pricing" class="border rounded-2xl p-4">
           <h3 class="font-semibold">Pricing</h3>
           <ul class="text-sm text-gray-700 list-disc ml-5 mt-2">
