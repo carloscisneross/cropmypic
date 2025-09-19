@@ -1,13 +1,11 @@
 {
   "name": "cropmypic",
   "private": true,
-  "type": "module",
+  "version": "1.0.0",
+  "description": "CropMyPic site + API",
+  "license": "MIT",
   "engines": { "node": ">=18" },
-  "scripts": {
-    "vercel-build": "echo \"static app + serverless functions\""
-  },
   "dependencies": {
-    "stripe": "^16.6.0",
-    "jsonwebtoken": "^9.0.2"
+    "stripe": "^14.0.0"
   }
 }
