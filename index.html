@@ -10,12 +10,15 @@
     gtag('config', 'G-3WV4JB97VY', { send_page_view: true /* ,debug_mode: true */ });
   </script>
 
-  <!-- Plausible Analytics (optional; keep or remove as you like) -->
+  <!-- Plausible Analytics (optional) -->
   <script defer data-domain="cropmypic.vercel.app" src="https://plausible.io/js/script.js"></script>
 
   <!-- Google AdSense (global) -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8562223178556235"
      crossorigin="anonymous"></script>
+
+  <!-- Stripe.js -->
+  <script src="https://js.stripe.com/v3"></script>
 
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -41,14 +44,13 @@
   <!-- Search Console verification -->
   <meta name="google-site-verification" content="2doTA3Wch0qlLgmHJVYz54JqQkLcLPwwt6VpjbtAiXU" />
 
-  <!-- Favicons / Apple / PWA (new) -->
+  <!-- Favicons / Apple / PWA -->
   <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png">
   <link rel="apple-touch-icon" href="/apple-touch-180.png" sizes="180x180">
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#111827">
 
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23000' d='M20 12h4v36h24v4H20zM12 20h36v24h4V20z'/%3E%3C/svg%3E">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 
@@ -94,7 +96,7 @@
           <input id="fileInput" type="file" accept="image/*" multiple class="hidden" />
           <div class="py-8">
             <p class="text-lg font-semibold">Drag & drop images here</p>
-            <p class="text-sm text-gray-500">or click to choose files (max 5 images, ≤ 10MB each on free tier)</p>
+            <p class="text-sm text-gray-500">or click to choose files (max <span id="limitFilesLabel">5</span> images, ≤ <span id="limitSizeLabel">10</span>MB each)</p>
             <button id="browseBtn" class="mt-4 px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">Choose Files</button>
           </div>
         </div>
@@ -207,7 +209,7 @@
             Generate Icon Pack (ZIP)
           </button>
           <span class="text-xs text-gray-500">Tip: click “Edit (Crop)” on any image to crop before processing.</span>
-          <span id="limitNote" class="text-xs text-gray-500 ml-auto">Free tier: up to 5 images/session, ≤ 10MB each.</span>
+          <span id="limitNote" class="text-xs text-gray-500 ml-auto">Free tier: up to <span id="limitFilesNote">5</span> images/session, ≤ <span id="limitSizeNote">10</span>MB each.</span>
         </div>
 
         <!-- Gallery -->
@@ -226,7 +228,7 @@
         </div>
 
         <!-- AdSense unit -->
-        <div class="border rounded-2xl p-4">
+        <div id="adBox" class="border rounded-2xl p-4">
           <h3 class="font-semibold">Ad</h3>
           <ins class="adsbygoogle"
                style="display:block"
@@ -241,7 +243,7 @@
           <h3 class="font-semibold">Pricing</h3>
           <ul class="text-sm text-gray-700 list-disc ml-5 mt-2">
             <li><strong>Free</strong>: 5 images, ≤10MB each, standard formats, ads.</li>
-            <li><strong>Pro</strong> ($4/mo): Unlimited, bigger files, batch ZIP, WebP/PNG/HEIC*, no ads.</li>
+            <li><strong>Pro</strong> ($4/mo): Unlimited*, bigger files, batch ZIP, WebP/PNG/HEIC*, no ads.</li>
           </ul>
           <button id="proBtn" class="mt-3 px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">Go Pro</button>
           <p class="mt-2 text-[11px] text-gray-500">* HEIC support planned.</p>
@@ -258,11 +260,11 @@
       </details>
       <details class="border rounded-xl p-4 mb-3">
         <summary class="font-medium cursor-pointer">How do I remove ads?</summary>
-        <p class="text-sm text-gray-600 mt-2">Upgrade to Pro (coming soon) to remove ads, unlock unlimited processing, and larger files.</p>
+        <p class="text-sm text-gray-600 mt-2">Upgrade to Pro to remove ads, unlock higher limits, and icon packs.</p>
       </details>
     </section>
 
-    <!-- How to use your icons (NEW) -->
+    <!-- How to use your icons -->
     <section id="how-to-use-icons" class="mt-16">
       <h2 class="text-2xl font-bold mb-4">How to use your icons</h2>
 
@@ -387,6 +389,21 @@
   </div>
 
   <script>
+    /* ---------- Pro mode bootstrap (Stripe client-only) ---------- */
+    const STRIPE_PK = "pk_live_51S97nuFMv56Or6XkN7DQwUkNdM5QqQNzRVh8y5YBOg618YYePYelmEEIWm3TRfg08ozILuZVXqOsHztQafRK7VZ700GpP4BSMk";
+    const STRIPE_PRICE_ID = "price_1S98CQFMv56Or6Xk0SZNQOUh"; // $4/mo (from you)
+    const stripe = Stripe(STRIPE_PK);
+
+    // Detect pro via query or localStorage
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('pro') === '1') {
+      localStorage.setItem('cmp_pro', '1');
+      // clean URL
+      url.searchParams.delete('pro');
+      history.replaceState({}, "", url.pathname + url.search);
+    }
+    let IS_PRO = localStorage.getItem('cmp_pro') === '1';
+
     // Elements
     const dropzone = document.getElementById('dropzone');
     const fileInput = document.getElementById('fileInput');
@@ -403,15 +420,64 @@
     const qualityVal = document.getElementById('qualityVal');
     const format = document.getElementById('format');
     const year = document.getElementById('year');
+    const adBox = document.getElementById('adBox');
+    const proBtn = document.getElementById('proBtn');
 
-    // Limits (free tier)
-    const MAX_FILES_FREE = 5;
-    const MAX_BYTES_FREE = 10 * 1024 * 1024; // 10MB
+    // Dynamic limits (free vs pro)
+    const LIMITS = {
+      FREE: { files: 5, mb: 10 },
+      PRO:  { files: 100, mb: 50 }
+    };
+    let MAX_FILES = IS_PRO ? LIMITS.PRO.files : LIMITS.FREE.files;
+    let MAX_BYTES = (IS_PRO ? LIMITS.PRO.mb : LIMITS.FREE.mb) * 1024 * 1024;
 
-    let filesQueue = [];
-    let processed = [];
+    // Reflect limits in UI
+    function updateLimitLabels(){
+      document.getElementById('limitFilesLabel').textContent = MAX_FILES;
+      document.getElementById('limitSizeLabel').textContent = IS_PRO ? LIMITS.PRO.mb : LIMITS.FREE.mb;
+      document.getElementById('limitFilesNote').textContent = MAX_FILES;
+      document.getElementById('limitSizeNote').textContent = IS_PRO ? LIMITS.PRO.mb : LIMITS.FREE.mb;
+      document.getElementById('limitNote').textContent = IS_PRO
+        ? `Pro: up to ${MAX_FILES} images/session, ≤ ${LIMITS.PRO.mb}MB each.`
+        : `Free tier: up to ${MAX_FILES} images/session, ≤ ${LIMITS.FREE.mb}MB each.`;
+    }
+
+    // Apply Pro UI changes
+    function applyProUI(){
+      if (IS_PRO) {
+        // Hide ads
+        if (adBox) adBox.style.display = 'none';
+        // Button state
+        proBtn.textContent = "You're Pro 🎉";
+        proBtn.disabled = true;
+        proBtn.classList.remove('bg-emerald-600','hover:bg-emerald-700');
+        proBtn.classList.add('bg-emerald-500','opacity-75','cursor-default');
+      }
+    }
 
     year.textContent = new Date().getFullYear();
+    updateLimitLabels();
+    applyProUI();
+
+    // Go Pro -> Stripe Checkout
+    proBtn.addEventListener('click', async () => {
+      if (IS_PRO) return;
+      gtag('event','pro_cta_click',{ event_category:'monetization' });
+
+      const successUrl = `${location.origin}${location.pathname}?pro=1`;
+      const cancelUrl  = `${location.origin}${location.pathname}`;
+
+      const { error } = await stripe.redirectToCheckout({
+        mode: "subscription",
+        lineItems: [{ price: STRIPE_PRICE_ID, quantity: 1 }],
+        successUrl,
+        cancelUrl,
+      });
+
+      if (error) {
+        alert(error.message || "Stripe checkout failed to open.");
+      }
+    });
 
     /* ---------- Icon pack availability + PNG forcing ---------- */
     function isPackValue(v){
@@ -458,20 +524,25 @@
 
     fileInput.addEventListener('change', e => enqueueFiles(e.target.files));
 
+    let filesQueue = [];
+    let processed = [];
+
     function enqueueFiles(fileList){
       const arr = Array.from(fileList);
       const currentCount = filesQueue.length;
-      const allowed = Math.max(0, MAX_FILES_FREE - currentCount);
+      const allowed = Math.max(0, MAX_FILES - currentCount);
       const toAdd = arr.slice(0, allowed);
       const rejectedCount = arr.length - toAdd.length;
 
       toAdd.forEach(f => {
-        if (f.size > MAX_BYTES_FREE) { alert(`${f.name} is over 10MB on the free tier.`); return; }
+        if (f.size > MAX_BYTES) { alert(`${f.name} is over ${Math.round(MAX_BYTES/1024/1024)}MB on your current plan.`); return; }
         if (!f.type.startsWith('image/')) { alert(`${f.name} is not an image.`); return; }
         filesQueue.push(f);
       });
 
-      if (rejectedCount > 0) { alert(`Free tier allows up to ${MAX_FILES_FREE} images per session.`); }
+      if (rejectedCount > 0) {
+        alert(`Your plan allows up to ${MAX_FILES} images per session.`);
+      }
       refreshGallery();
       updateIconPackAvailability();
     }
@@ -751,12 +822,6 @@
       return Math.ceil((base64.length * 3) / 4);
     }
 
-    // Pro CTA tracking
-    document.getElementById('proBtn').addEventListener('click', () => {
-      gtag('event', 'pro_cta_click', { event_category: 'monetization' });
-      alert('Pro coming soon: unlimited, larger files, no ads.');
-    });
-
     /* ------- Cropper integration ------- */
     let cropper = null;
     let cropIndex = -1;
@@ -854,3 +919,4 @@
   </script>
 </body>
 </html>
+
