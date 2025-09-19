@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CropMyPic Pro — Welcome!</title>
+  <link rel="icon" href="/favicon.ico" />
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-white text-gray-900">
+  <main class="max-w-2xl mx-auto p-6">
+    <div class="rounded-2xl border p-6 shadow-sm">
+      <h1 class="text-2xl font-bold mb-2">🎉 You’re all set!</h1>
+      <p class="text-gray-600">Thanks for subscribing to <strong>CropMyPic Pro</strong>.</p>
+      <p class="text-gray-600 mt-2">Your Pro features will unlock automatically on supported devices.</p>
+      <a href="/" class="inline-block mt-6 px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">
+        Go to app
+      </a>
+    </div>
+  </main>
+
+  <script>
+    // Temporary client flag: mark as "pro" so the UI can hide ads / lift limits immediately.
+    // (We’ll replace this with secure server-side checks + webhooks in Phase 2.)
+    try { localStorage.setItem("cmp_is_pro","1"); } catch(e) {}
+  </script>
+</body>
+</html>
