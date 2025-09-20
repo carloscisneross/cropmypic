@@ -1,49 +1,70 @@
 // /api/checkout.js
+// Vercel/Node serverless function to create a Stripe Checkout Session (subscription)
+
 const Stripe = require('stripe');
 
+// Initialize Stripe with your secret key
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  // Pick a recent version; keep in sync with your Stripe dashboard default
   apiVersion: '2024-06-20',
 });
 
 module.exports = async (req, res) => {
-  // Allow same-origin; handy if you preview from other domains too
-  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', 'https://cropmypic.vercel.app');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
   try {
-    // Safely parse body (Vercel functions do NOT auto-parse)
-    let body = req.body;
-    if (typeof body === 'string') {
-      try { body = JSON.parse(body); } catch { body = {}; }
-    } else if (!body) {
-      body = {};
+    let body;
+    try {
+      body = JSON.parse(req.body);
+    } catch (e) {
+      body = req.body;
+    }
+    
+    const { priceId } = body || {};
+    const price = priceId || process.env.STRIPE_PRICE_ID;
+    
+    if (!price) {
+      return res.status(400).json({ error: 'Missing priceId' });
     }
 
-    const priceId = body.priceId || process.env.STRIPE_PRICE_ID;
-    if (!priceId) return res.status(400).json({ error: 'Missing priceId' });
+    // Build origin for redirect URLs
+    const origin = req.headers.origin || 
+                   (req.headers.host ? `https://${req.headers.host}` : 'https://cropmypic.vercel.app');
 
-    const origin =
-      req.headers.origin ||
-      (req.headers.host ? `https://${req.headers.host}` : 'https://cropmypic.vercel.app');
-
+    // Create a Checkout Session for a subscription
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
-      line_items: [{ price: priceId, quantity: 1 }],
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price: price,
+          quantity: 1,
+        },
+      ],
       allow_promotion_codes: true,
       billing_address_collection: 'auto',
       success_url: `${origin}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/?checkout=cancelled`,
-      payment_method_types: ['card'],
     });
 
-    return res.status(200).json({ url: session.url, id: session.id });
+    return res.status(200).json({ 
+      id: session.id, 
+      url: session.url 
+    });
   } catch (err) {
     console.error('Stripe checkout error:', err);
-    return res.status(500).json({ error: err.message || 'Server error' });
+    return res.status(500).json({ error: err.message });
   }
 };
