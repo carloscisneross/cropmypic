@@ -79,7 +79,7 @@
         </div>
       </div>
 
-      <!-- Right: info + ad + pricing -->
+      <!-- Right: info + pricing -->
       <aside class="space-y-6">
         <div id="pricing" class="border rounded-2xl p-4">
           <h3 class="font-semibold">Pricing</h3>
@@ -103,9 +103,8 @@
     const portalBtn = document.getElementById('portalBtn');
     const checkoutStatus = document.getElementById('checkoutStatus');
 
-    /* ------------ Plan & Limits (Free vs Pro) ------------ */
+    /* ------------ Plan & UI ------------ */
     let plan = localStorage.getItem('cmp_plan') || 'free';
-
     function applyPlanUI(){
       if (plan === 'pro') {
         portalBtn.classList.remove('hidden');
@@ -125,72 +124,61 @@
         if (b) b.remove();
       }
     }
-
     applyPlanUI();
 
-    /* ---------- Stripe Checkout Fix ---------- */
-    // Use test key for demonstration - replace with your live key in production
-    const STRIPE_PK = 'pk_test_51S97nuFMv56Or6Xk2A2vz6JzL8n6g7qZ6Q6Q6Q6Q6Q6Q6Q6Q6Q6Q6Q6Q6Q6Q6Q6Q6Q6Q6Q6Q';
-    const PRICE_ID = 'price_1S98CQFMv56Or6Xk0SZNQOUh';
-    
-    // Initialize Stripe
-    const stripe = Stripe(STRIPE_PK);
-    
-    // Add event listener to the Pro button
+    /* ---------- Stripe Checkout (LIVE) ---------- */
+    // Your live publishable key and price id
+    const STRIPE_PK = 'pk_live_51S97nuFMv56Or6XkN7DQwUkNdM5QqQNzRVh8y5YBOg618YYePYelmEEIWm3TRfg08ozILuZVXqOsHztQafRK7VZ700GpP4BSMk';
+    const PRICE_ID  = 'price_1S98CQFMv56Or6Xk0SZNQOUh';
+
+    // Guard if Stripe.js failed to load
+    if (typeof Stripe === 'undefined') {
+      console.error('Stripe.js failed to load');
+      proBtn.disabled = true;
+      proBtn.textContent = 'Checkout unavailable';
+    }
+    const stripe = typeof Stripe !== 'undefined' ? Stripe(STRIPE_PK) : null;
+
     proBtn.addEventListener('click', async () => {
+      if (!stripe) return;
+
       try {
-        // Show loading state
         proBtn.classList.add('btn-loading', 'loading');
         proBtn.disabled = true;
         checkoutStatus.classList.add('hidden');
-        
-        console.log('Initiating checkout...');
-        
-        // Call your checkout API
+
+        // Create checkout session on your API
         const response = await fetch('/api/checkout', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ priceId: PRICE_ID }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ priceId: PRICE_ID })
         });
-        
+
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Checkout failed');
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.error || 'Checkout failed');
         }
-        
+
         const session = await response.json();
-        console.log('Checkout session:', session);
-        
-        // Redirect to Stripe Checkout
-        const result = await stripe.redirectToCheckout({
-          sessionId: session.id,
-        });
-        
-        if (result.error) {
-          throw new Error(result.error.message);
-        }
+        // Redirect via Stripe.js
+        const { error } = await stripe.redirectToCheckout({ sessionId: session.id });
+        if (error) throw new Error(error.message);
       } catch (error) {
         console.error('Checkout error:', error);
         checkoutStatus.textContent = `Checkout failed: ${error.message}`;
         checkoutStatus.classList.remove('hidden');
-        
-        // Reset button state
         proBtn.classList.remove('btn-loading', 'loading');
         proBtn.disabled = false;
       }
     });
 
-    // Handle return from checkout
+    // Handle return from checkout (temporary client-side unlock)
     const queryString = new URLSearchParams(window.location.search);
     if (queryString.get('checkout') === 'success') {
       localStorage.setItem('cmp_plan', 'pro');
       plan = 'pro';
       applyPlanUI();
       alert('Thanks for subscribing! Pro features unlocked.');
-      
-      // Clean URL
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   </script>
