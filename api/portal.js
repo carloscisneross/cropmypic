@@ -1,26 +1,35 @@
-// pages/api/portal.js
-import Stripe from 'stripe';
-import jwt from 'jsonwebtoken';
+// Creates a Customer Portal session using the customer id from the cookie
+const Stripe = require('stripe');
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' });
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+function getCookie(req, name) {
+  const header = req.headers.cookie;
+  if (!header) return null;
+  const cookies = header.split(';').map(v => v.trim().split('='));
+  for (const [k, v] of cookies) if (k === name) return decodeURIComponent(v || '');
+  return null;
+}
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   try {
-    const cookie = req.headers.cookie || '';
-    const token = (cookie.match(/(?:^|;\s*)cmp_pro=([^;]+)/) || [])[1];
-    if (!token) return res.status(401).send('Not Pro');
+    const customerId = getCookie(req, 'cmp_cust');
+    if (!customerId) return res.status(401).json({ error: 'Not signed in' });
 
-    const decoded = jwt.verify(token, process.env.COOKIE_SECRET);
-    const customer = decoded.customer;
-
-    const portal = await stripe.billingPortal.sessions.create({
-      customer,
-      return_url: process.env.DOMAIN + '/'
+    const origin = req.headers.origin || `https://${req.headers.host}`;
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: origin,
     });
 
-    return res.redirect(portal.url);
-  } catch (e) {
-    console.error(e);
-    res.status(401).send('Unauthorized');
+    return res.status(200).json({ url: session.url });
+  } catch (err) {
+    console.error('portal error', err);
+    return res.status(500).json({ error: err.message || 'Portal failed' });
   }
-}
+};
+
