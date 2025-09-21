@@ -1,38 +1,47 @@
-// pages/api/after-checkout.js
-import Stripe from 'stripe';
-import jwt from 'jsonwebtoken';
+// Called by Stripe after successful payment (via success_url)
+// We fetch the session, pull out the customer id, set a cookie, and send the user home.
+const Stripe = require('stripe');
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' });
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+function setCookie(res, name, value, days = 365) {
+  const expires = new Date(Date.now() + days*24*60*60*1000).toUTCString();
+  const cookie = [
+    `${name}=${encodeURIComponent(value)}`,
+    `Expires=${expires}`,
+    'Path=/',
+    'SameSite=Lax',
+    'Secure',            // your site is HTTPS on Vercel
+    'HttpOnly'           // JS can’t read it; use /api/me to check status
+  ].join('; ');
+  res.setHeader('Set-Cookie', cookie);
+}
 
-export default async function handler(req, res) {
-  const { session_id } = req.query;
-  if (!session_id) return res.redirect('/');
-
+module.exports = async (req, res) => {
   try {
-    const session = await stripe.checkout.sessions.retrieve(session_id);
-    // Verify it really completed & has a subscription
-    if (session.status !== 'complete' && session.payment_status !== 'paid') {
-      return res.redirect('/?pro=notpaid');
+    const { session_id } = req.query || {};
+    if (!session_id) {
+      // If someone hits this without a session id, just go home.
+      return res.redirect(302, '/');
     }
 
-    // Get the Stripe customer id (we’ll use this in portal + webhook)
-    const customerId = session.customer;
+    const session = await stripe.checkout.sessions.retrieve(session_id, {
+      expand: ['customer'],
+    });
 
-    // Sign a short JWT with customer id and plan
-    const token = jwt.sign(
-      { customer: customerId, plan: 'pro' },
-      process.env.COOKIE_SECRET,
-      { expiresIn: '365d' }
-    );
+    // session.customer can be a string or an object (expanded). We need the id.
+    const customerId = typeof session.customer === 'string'
+      ? session.customer
+      : session.customer?.id;
 
-    // Set httpOnly cookie
-    res.setHeader('Set-Cookie', [
-      `cmp_pro=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${60*60*24*365}`
-    ]);
+    if (customerId) {
+      // Store the Stripe customer id in a cookie
+      setCookie(res, 'cmp_cust', customerId);
+    }
 
-    return res.redirect('/');
-  } catch (e) {
-    console.error(e);
-    return res.redirect('/?pro=error');
+    // Go back to the app (optional flag for a one-time “thanks” toast)
+    return res.redirect(302, '/?checkout=success');
+  } catch (err) {
+    console.error('after-checkout error', err);
+    return res.redirect(302, '/?checkout=error');
   }
-}
+};
