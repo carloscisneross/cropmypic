@@ -362,6 +362,21 @@
     year.textContent = new Date().getFullYear();
     applyPlanUI();
 
+    /* ====== NEW: Ask server if user is Pro, update UI ====== */
+    async function checkPro() {
+      try {
+        const r = await fetch('/api/me', { credentials: 'include' });
+        if (!r.ok) return;
+        const { isPro } = await r.json();
+        window.plan = isPro ? 'pro' : 'free';
+        localStorage.setItem('cmp_plan', isPro ? 'pro' : 'free');
+        if (typeof applyPlanUI === 'function') applyPlanUI();
+      } catch (_) {}
+    }
+    // Run on load
+    checkPro();
+    /* ======================================================= */
+
     /* ------------------ UI events ------------------ */
     quality.addEventListener('input', () => qualityVal.textContent = quality.value);
 
@@ -770,13 +785,11 @@
       }
     });
 
-    // Handle return from checkout (lightweight)
-    (function handleReturn(){
+    // ===== Updated: Handle return from checkout and re-check with server
+    (async function handleReturn(){
       const qs = new URLSearchParams(location.search);
       if (qs.get('checkout') === 'success') {
-        localStorage.setItem('cmp_plan', 'pro');
-        plan = 'pro';
-        applyPlanUI();
+        await checkPro(); // flip UI once webhook has marked the customer Pro
         alert('Thanks for subscribing! Pro features unlocked.');
         history.replaceState({}, '', location.pathname);
       } else if (qs.get('checkout') === 'cancelled') {
