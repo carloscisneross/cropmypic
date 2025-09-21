@@ -1,53 +1,48 @@
-// pages/api/webhook.js
-import Stripe from 'stripe';
+// Verifies Stripe webhooks (good to have, even if we don’t store state)
+// NOTE: set STRIPE_WEBHOOK_SECRET in Vercel and connect this endpoint in Stripe Dashboard
+const Stripe = require('stripe');
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' });
 
-export const config = {
-  api: {
-    bodyParser: false, // Stripe needs raw body
-  },
-};
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
-function buffer(req) {
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    req.on('data', (c) => chunks.push(c));
-    req.on('end', () => resolve(Buffer.concat(chunks)));
-    req.on('error', reject);
+module.exports = async (req, res) => {
+  // Vercel gives you the raw body only if you disable body parsing. If your
+  // project framework auto-parses the body, switch to "verify" mode (Next.js)
+  // or use stripes' recommended adapter. For many plain Vercel Node APIs, this works:
+  let rawBody = '';
+  await new Promise(resolve => {
+    req.on('data', c => (rawBody += c));
+    req.on('end', resolve);
   });
-}
-
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end();
 
   const sig = req.headers['stripe-signature'];
-  const buf = await buffer(req);
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   let event;
   try {
-    event = stripe.webhooks.constructEvent(buf, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    event = stripe.webhooks.constructEvent(rawBody, sig, endpointSecret);
   } catch (err) {
-    console.error('Webhook signature verification failed.', err.message);
+    console.error('Webhook signature verification failed:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
   try {
     switch (event.type) {
       case 'checkout.session.completed':
-        // You could store mapping customer <-> status in your DB
+        // You could log or trigger email, etc. No cookie can be set here.
         break;
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted':
-      case 'invoice.payment_failed':
-        // In a real app, update your DB to reflect non-pro state.
+        // If you later add a DB, you’d sync here.
         break;
       default:
         break;
     }
-    res.json({ received: true });
-  } catch (e) {
-    console.error(e);
+    res.status(200).json({ received: true });
+  } catch (err) {
+    console.error('Webhook handler error:', err);
     res.status(500).end();
   }
-}
+};
+
+// IMPORTANT: If you’re using Next.js, also export config to disable body parsing:
+// export const config = { api: { bodyParser: false } }
+
